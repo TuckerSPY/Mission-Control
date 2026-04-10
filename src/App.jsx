@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import ChartTab from "./components/ChartTab";
 
 // ── DESIGN SYSTEM ──
 const C = {
@@ -389,6 +390,7 @@ export default function MissionControl() {
 
   const tabs = [
     { k: "command", l: "Command", icon: "◆" },
+    { k: "chart", l: "Chart", icon: "◉" },
     { k: "agents", l: "Agents", icon: "◈" },
     { k: "schedule", l: "Schedule", icon: "◇" },
     { k: "memory", l: "Memory", icon: "◻️" },
@@ -451,6 +453,7 @@ export default function MissionControl() {
       {/* ── CONTENT ── */}
       <div style={{ padding: "16px 20px", maxWidth: 1440, margin: "0 auto" }}>
         {tab === "command" && <CommandTab />}
+        {tab === "chart" && <ChartTab />}
         {tab === "agents" && <AgentsTab />}
         {tab === "schedule" && <ScheduleTab />}
         {tab === "memory" && <MemoryTab sel={memSel} setSel={setMemSel} />}
