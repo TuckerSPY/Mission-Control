@@ -8,70 +8,52 @@ const C = {
   blue: "#6d8aff", purple: "#a78bfa", amber: "#fbbf24"
 };
 
+const TICKERS = [
+  { symbol: "SPX", name: "S&P 500" },
+  { symbol: "SPY", name: "SPDR S&P 500" },
+  { symbol: "QQQ", name: "Invesco QQQ" },
+  { symbol: "IWM", name: "Russell 2000" },
+  { symbol: "VIX", name: "Volatility Index" },
+  { symbol: "TSLA", name: "Tesla" },
+  { symbol: "AAPL", name: "Apple" },
+  { symbol: "NVDA", name: "NVIDIA" },
+];
+
+const TIMEFRAMES = [
+  { value: "1", label: "1m" },
+  { value: "5", label: "5m" },
+  { value: "15", label: "15m" },
+  { value: "30", label: "30m" },
+  { value: "60", label: "1h" },
+  { value: "240", label: "4h" },
+  { value: "D", label: "1D" },
+];
+
 const TradingViewChart = ({ 
-  symbol = "SPX", 
-  interval = "1", 
+  symbol: initialSymbol = "SPX", 
+  interval: initialInterval = "1", 
   theme = "dark",
   onPriceUpdate,
   showStudies = true
 }) => {
   const containerRef = useRef(null);
+  const widgetRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentPrice, setCurrentPrice] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
+  const [symbol, setSymbol] = useState(initialSymbol);
+  const [interval, setInterval] = useState(initialInterval);
+  const scriptLoaded = useRef(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Clean up any existing widget
-    containerRef.current.innerHTML = '';
+    if (!containerRef.current || scriptLoaded.current) return;
+    scriptLoaded.current = true;
 
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/tv.js';
     script.async = true;
     script.onload = () => {
-      if (window.TradingView) {
-        new window.TradingView.widget({
-          autosize: true,
-          symbol: symbol,
-          interval: interval,
-          timezone: "America/New_York",
-          theme: theme,
-          style: "1",
-          locale: "en",
-          toolbar_bg: C.bg1,
-          enable_publishing: false,
-          hide_top_toolbar: false,
-          hide_legend: false,
-          save_image: false,
-          container_id: containerRef.current.id,
-          studies: showStudies ? [
-            "MASimple@tv-basicstudies",
-            "RSI@tv-basicstudies",
-            "VWAP@tv-basicstudies"
-          ] : [],
-          show_popup_button: true,
-          popup_width: "1000",
-          popup_height: "650",
-          disabled_features: [
-            "header_symbol_search",
-            "header_compare",
-            "header_screenshot"
-          ],
-          enabled_features: [
-            "study_templates",
-            "use_localstorage_for_settings"
-          ],
-          overrides: {
-            "paneProperties.background": C.bg,
-            "paneProperties.vertGridProperties.color": C.borderDim,
-            "paneProperties.horzGridProperties.color": C.borderDim,
-            "symbolWatermarkProperties.transparency": 90,
-            "scalesProperties.textColor": C.textDim
-          }
-        });
-        setIsLoaded(true);
-      }
+      setIsLoaded(true);
     };
 
     document.head.appendChild(script);
@@ -81,12 +63,58 @@ const TradingViewChart = ({
         script.parentNode.removeChild(script);
       }
     };
-  }, [symbol, interval, theme, showStudies]);
+  }, []);
 
-  // Simulate price updates for backtesting interface
+  useEffect(() => {
+    if (!isLoaded || !containerRef.current || !window.TradingView) return;
+
+    // Clean up existing widget
+    containerRef.current.innerHTML = '';
+
+    widgetRef.current = new window.TradingView.widget({
+      autosize: true,
+      symbol: symbol,
+      interval: interval,
+      timezone: "America/New_York",
+      theme: theme,
+      style: "1",
+      locale: "en",
+      toolbar_bg: C.bg1,
+      enable_publishing: false,
+      hide_top_toolbar: false,
+      hide_legend: false,
+      save_image: false,
+      container_id: containerRef.current.id,
+      studies: showStudies ? [
+        "MASimple@tv-basicstudies",
+        "RSI@tv-basicstudies",
+        "VWAP@tv-basicstudies"
+      ] : [],
+      show_popup_button: true,
+      popup_width: "1000",
+      popup_height: "650",
+      disabled_features: [
+        "header_symbol_search",
+        "header_compare",
+        "header_screenshot"
+      ],
+      enabled_features: [
+        "study_templates",
+        "use_localstorage_for_settings"
+      ],
+      overrides: {
+        "paneProperties.background": C.bg,
+        "paneProperties.vertGridProperties.color": C.borderDim,
+        "paneProperties.horzGridProperties.color": C.borderDim,
+        "symbolWatermarkProperties.transparency": 90,
+        "scalesProperties.textColor": C.textDim
+      }
+    });
+  }, [isLoaded, symbol, interval, theme, showStudies]);
+
+  // Simulate price updates
   useEffect(() => {
     const intervalId = setInterval(() => {
-      // Mock price data - in production this would come from WebSocket/API
       const mockPrice = 5823.47 + (Math.random() - 0.5) * 10;
       const change = (Math.random() - 0.5) * 20;
       setCurrentPrice(mockPrice);
@@ -119,45 +147,70 @@ const TradingViewChart = ({
         background: C.bg1
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ 
-            fontSize: 14, 
-            fontWeight: 700, 
-            fontFamily: 'JetBrains Mono, monospace',
-            color: C.gold 
-          }}>
-            {symbol}
-          </span>
+          {/* Symbol Selector */}
+          <select 
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: `1px solid ${C.borderDim}`,
+              background: C.bg2,
+              color: C.gold,
+              fontSize: 14,
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 700,
+              cursor: "pointer"
+            }}
+          >
+            {TICKERS.map(t => (
+              <option key={t.symbol} value={t.symbol}>{t.symbol}</option>
+            ))}
+          </select>
+          
           <span style={{ 
             fontSize: 12, 
-            fontFamily: 'JetBrains Mono, monospace',
-            color: priceChange >= 0 ? C.green : C.red 
+            fontFamily: "'JetBrains Mono', monospace",
+            color: C.textDim
           }}>
-            {currentPrice?.toFixed(2) || '---'}
-            {priceChange && (
-              <span style={{ marginLeft: 8 }}>
-                {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}
-              </span>
-            )}
+            {TICKERS.find(t => t.symbol === symbol)?.name}
           </span>
+          
+          {currentPrice && (
+            <span style={{ 
+              fontSize: 14, 
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 600, 
+              color: priceChange >= 0 ? C.green : C.red 
+            }}>
+              {currentPrice.toFixed(2)}
+              <span style={{ marginLeft: 8, fontSize: 11 }}>
+                {priceChange >= 0 ? '+' : ''}{priceChange?.toFixed(2)}
+              </span>
+            </span>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {['1', '5', '15', '30', '60', 'D'].map(tf => (
+        
+        {/* Timeframe Selector */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {TIMEFRAMES.map(tf => (
             <button
-              key={tf}
-              onClick={() => {}}
+              key={tf.value}
+              onClick={() => setInterval(tf.value)}
               style={{
-                padding: '4px 8px',
+                padding: '4px 10px',
                 borderRadius: 4,
                 border: 'none',
-                background: interval === tf ? C.gold : 'transparent',
-                color: interval === tf ? C.bg : C.textDim,
-                fontSize: 10,
-                fontFamily: 'JetBrains Mono, monospace',
+                background: interval === tf.value ? C.gold : 'transparent',
+                color: interval === tf.value ? C.bg : C.textDim,
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', monospace",
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.15s'
               }}
             >
-              {tf}
+              {tf.label}
             </button>
           ))}
         </div>
@@ -166,7 +219,7 @@ const TradingViewChart = ({
       {/* Chart Container */}
       <div style={{ flex: 1, position: 'relative' }}>
         <div 
-          id={`tradingview-chart-${symbol}`}
+          id={`tradingview-chart-${symbol}-${interval}`}
           ref={containerRef}
           style={{ 
             width: '100%', 
@@ -187,7 +240,7 @@ const TradingViewChart = ({
             background: C.bg,
             color: C.textDim,
             fontSize: 12,
-            fontFamily: 'JetBrains Mono, monospace'
+            fontFamily: "'JetBrains Mono', monospace"
           }}>
             Loading Chart...
           </div>
